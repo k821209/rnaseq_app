@@ -1,26 +1,27 @@
 import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import { HashRouter, Route } from 'react-router-dom';
+import Box from './Box';
+import HeaderTop from './Header';
+import Navigation from './Navi';
+import { Header, Container } from 'semantic-ui-react';
+
+
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+    <HashRouter>
+      <HeaderTop />
+      <Container>
+        <Header>
+          TEST
+      </Header>
+      </Container>
+
+      <Navigation />
+      <Route path='/:geneName' component={Box} />
+    </HashRouter>
+  )
+
 }
 
 export default App;
