@@ -3,13 +3,13 @@ import _ from 'lodash'
 import { Link } from 'react-router-dom';
 import React, { Component } from 'react'
 import axios from 'axios';
-import { Search, Grid, Label, Container } from 'semantic-ui-react'
+import { Search, Grid, Label, Container, Header } from 'semantic-ui-react'
 
 
 const resultRenderer = ({ gene, search_terms, predicted_gene_name, eggnog_annot }) => {
     return (
         <Link to={{
-            pathname: `/${gene}/`,
+            pathname: `/info/${gene}/`,
             state: { gene }
         }}>
             <Label> {search_terms} <Label.Detail>{eggnog_annot}</Label.Detail></Label>
@@ -33,6 +33,7 @@ export default class SearchExampleStandard extends Component {
 
     handleSearchChange = (e, { value }) => {
         this.setState({ isLoading: true, value })
+        console.log(this.state)
         setTimeout(() => {
             if (this.state.value.length < 1) return this.setState({ result: [] })
             const re = new RegExp(_.escapeRegExp(this.state.value), 'i')
@@ -63,9 +64,14 @@ export default class SearchExampleStandard extends Component {
         const { isLoading, value, results, source } = this.state
         return (
             <Container>
-                <Grid>
+                <Grid columns={2}>
+                    <Grid.Column width={6}>
+
+                    </Grid.Column>
                     <Grid.Column width={6}>
                         <Search
+                            size='huge'
+                            placeholder="please type genename"
                             loading={isLoading}
                             onResultSelect={this.handleResultSelect}
                             onSearchChange={_.debounce(this.handleSearchChange, 500, {
@@ -78,6 +84,7 @@ export default class SearchExampleStandard extends Component {
                         />
                     </Grid.Column>
                 </Grid>
+
             </Container>
 
         )

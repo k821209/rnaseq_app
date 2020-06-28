@@ -1,23 +1,50 @@
 import React from 'react';
 import axios from 'axios';
 import { Chart } from "react-google-charts";
-import { computeBoxplotStats } from 'react-boxplot';
 import { Grid, Container, Table, Label, Header } from 'semantic-ui-react';
 
 
-class Box extends React.Component {
+class Info extends React.Component {
     state = {
+        geneName: '',
         isLoading: true,
         downExp: [],
         upExp: [],
         annot: [],
     };
+
+    // sort array ascending
+    asc = arr => arr.sort((a, b) => a - b);
+
+    sum = arr => arr.reduce((a, b) => a + b, 0);
+
+    mean = arr => this.sum(arr) / arr.length;
+
+    // sample standard deviation
+    std = (arr) => {
+        const mu = this.mean(arr);
+        const diffArr = arr.map(a => (a - mu) ** 2);
+        return Math.sqrt(this.sum(diffArr) / (arr.length - 1));
+    };
+
+    quantile = (arr, q) => {
+        const sorted = this.asc(arr);
+        const pos = (sorted.length - 1) * q;
+        const base = Math.floor(pos);
+        const rest = pos - base;
+        if (sorted[base + 1] !== undefined) {
+            return sorted[base] + rest * (sorted[base + 1] - sorted[base]);
+        } else {
+            return sorted[base];
+        }
+    };
+
     callExp = async (geneName) => {
         console.log(geneName)
         const { data: { 0: { down_exp } } } = await axios.get(`http://203.255.24.98:7890/Down_exp/?format=json&gene=${geneName}`)
         const { data: { 0: { up_exp } } } = await axios.get(`http://203.255.24.98:7890/Up_exp/?format=json&gene=${geneName}`)
         const { data } = await axios.get(`http://203.255.24.98:7890/Annotations/?format=json&gene=${geneName}`)
-        this.setState({ isLoading: false, downExp: down_exp, upExp: up_exp, annot: data })
+        this.setState({ isLoading: false, downExp: down_exp, upExp: up_exp, annot: data, geneName: geneName })
     }
 
     componentDidUpdate(prevProps, prevState) {
@@ -56,57 +83,94 @@ class Box extends React.Component {
     }
     render() {
         const { geneName, isLoading, downExp, upExp, annot } = this.state;
-        var upExpArray = upExp.toString().split(",").map(Number)
+        var upExpArray = upExp.toString().split(",").map(parseFloat)
         if (isLoading === false) {
             upExpArray = upExpArray.slice(1, 3)
         }
 
         console.log(upExpArray)
-        const downExpArray = downExp.toString().split(",").map(Number)
+        const dwExpArray = downExp.toString().split(",").map(parseFloat)
         const upExpArray2chart = this.get_exp2data(upExpArray, 'green', 'float')
-        const dwExpArray2chart = this.get_exp2data(downExpArray, 'blue', 'drown')
-        console.log([...upExpArray2chart, ...dwExpArray2chart])
-
-        const allExp = upExpArray.concat(downExpArray)
+        const dwExpArray2chart = this.get_exp2data(dwExpArray, 'blue', 'drown')
         const upLabel = ['Floating']
         const downLabel = ['Drowning']
-        const dwBox = computeBoxplotStats(downExpArray)
-        const upBox = computeBoxplotStats(upExpArray)
-        // const upData = upLabel.concat([dwBox.whiskerLow, dwBox.whiskerHigh, dwBox.quartile1, dwBox.quartile3])
-        const upData = upLabel.concat([Math.min(...upExpArray), Math.max(...upExpArray), upBox.quartile1, upBox.quartile3])
-
-        const downData = downLabel.concat([Math.min(...downExpArray), Math.max(...downExpArray), dwBox.quartile1, dwBox.quartile3])
-
-        console.log(isLoading, upExpArray, downExpArray, upData, downData, annot, computeBoxplotStats(downExpArray))
+        var upData = upLabel.concat([Math.min(...upExpArray), this.quantile(upExpArray, 0.25), this.quantile(upExpArray, 0.75), Math.max(...upExpArray)])
+        upData = upData.concat(['color:green'])
+        var downData = downLabel.concat([Math.min(...dwExpArray), this.quantile(dwExpArray, 0.25), this.quantile(dwExpArray, 0.75), Math.max(...dwExpArray)])
+        downData = downData.concat(['color:blue'])
+        console.log(upData, downData)
+        // const upData = upLabel.concat([Math.min(...upExpArray), upBox.quartile1, upBox.quartile3, Math.max(...upExpArray)])
+        // const downData = downLabel.concat([Math.min(...downExpArray), dwBox.quartile1, dwBox.quartile3, Math.max(...downExpArray)])
         return (
 
             <div>
                 {isLoading ? "Loading" :
                     <Container>
                         <Grid stackable columns={2}>
-                            <Grid.Column width={6}>
-                                <Header> Box plot </Header>
+                            <Grid.Column width={8}>
                                 <Chart
                                     width={'100%'}
                                     height={350}
                                     chartType="CandlestickChart"
                                     loader={<div>Loading Chart</div>}
                                     data={[
-                                        ['phase', 'a', 'b', 'c', 'd'],
+                                        ['phase', 'a', 'b', 'c', 'd', { role: "style" }],
                                         downData,
                                         upData,
                                     ]}
                                     options={{
+                                        title: "Box plot of gene expression",
+                                        bar: { groupWidth: '60%' },
                                         legend: 'none',
                                         seriesType: 'candlesticks',
-                                        vAxis: { title: 'TPM', titleTextStyle: { italic: false } }
+                                        vAxis: { title: 'TPM', titleTextStyle: { italic: false } },
                                     }}
                                     rootProps={{ 'data-testid': '1' }}
                                 />
                             </Grid.Column>
                             <Grid.Column width={8}>
-                                <Header> Annotations </Header>
-                                <Table fixed>
+                                <Chart
+                                    width={'100%'}
+                                    height={350}
+                                    chartType="ColumnChart"
+                                    loader={<div>Loading Chart</div>}
+                                    data={[
+                                        [
+                                            'Element',
+                                            'Density',
+                                            { role: 'style' },
+                                            {
+                                                sourceColumn: 0,
+                                                role: 'annotation',
+                                                type: 'string',
+                                                calc: 'stringify',
+                                            },
+                                        ],
+                                        ...dwExpArray2chart,
+                                        ...upExpArray2chart,
+
+                                    ]}
+
+                                    options={{
+                                        title: 'Bar plot of gene expressions',
+                                        bar: { groupWidth: '60%' },
+                                        legend: { position: 'none' },
+                                        hAxis: {
+                                            title: 'Samples',
+                                            titleTextStyle: { italic: false }
+                                        },
+                                        vAxis: {
+                                            title: 'TPM',
+                                            titleTextStyle: { italic: false }
+                                        },
+                                    }}
+                                    // For tests
+                                    rootProps={{ 'data-testid': '6' }}
+                                />
+                            </Grid.Column>
+                            <Grid.Column width={16}>
+                                <Header textAlign='center'> {geneName} information based on Eggnog DB </Header>
+                                <Table centered>
                                     <Table.Header>
                                         <Table.Row>
                                             <Table.HeaderCell>Class</Table.HeaderCell>
@@ -132,44 +196,12 @@ class Box extends React.Component {
                                         </Table.Row>
                                         <Table.Row>
                                             <Table.Cell>GO_terms</Table.Cell>
-                                            <Table.Cell>{annot[0].go_terms.split(',').join(', ')}</Table.Cell>
+                                            <Table.Cell>{annot[0].go_terms
+                                                ? annot[0].go_terms.split(',').join(', ')
+                                                : "None"}</Table.Cell>
                                         </Table.Row>
                                     </Table.Body>
                                 </Table>
-                            </Grid.Column>
-                            <Grid.Column>
-                                <Chart
-                                    width={'300px'}
-                                    height={'300px'}
-                                    chartType="ColumnChart"
-                                    loader={<div>Loading Chart</div>}
-                                    data={[
-                                        [
-                                            'Element',
-                                            'Density',
-                                            { role: 'style' },
-                                            {
-                                                sourceColumn: 0,
-                                                role: 'annotation',
-                                                type: 'string',
-                                                calc: 'stringify',
-                                            },
-                                        ],
-                                        ...dwExpArray2chart,
-                                        ...upExpArray2chart,
-
-                                    ]}
-
-                                    options={{
-                                        title: 'Density of Precious Metals, in g/cm^3',
-                                        width: 600,
-                                        height: 400,
-                                        bar: { groupWidth: '95%' },
-                                        legend: { position: 'none' },
-                                    }}
-                                    // For tests
-                                    rootProps={{ 'data-testid': '6' }}
-                                />
                             </Grid.Column>
                         </Grid>
                     </Container>
@@ -182,4 +214,4 @@ class Box extends React.Component {
     }
 }
 
-export default Box;
+export default Info;

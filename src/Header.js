@@ -7,16 +7,16 @@ import {
 function headerTop() {
     return (
         <Container>
-            <Segment inverted textAlign="center">
+            <Segment textAlign="center">
                 <Header
                     as="h1"
-                    content='Wolffia australiana RNAseq DB'
-                    inverted color='yellow'
+                    content='Database of Wolffia australiana'
+                    color='yellow'
                     style={{
                         fontSize: '3em',
                         fontWeight: '900',
-                        marginBottom: '0.5em',
-                        marginTop: '0.5em',
+                        marginBottom: '0.2em',
+                        marginTop: '0.2em',
                     }}
                 />
             </Segment>
